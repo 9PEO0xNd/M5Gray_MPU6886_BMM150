@@ -7,3 +7,10 @@ BMM150class.cpp and BMM150class.h were forked from omegatao's repository and add
 Original link (platform IO base)
 
 https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
+
+# Usage
+
+copy BMM150 folder into your arduino libraries folder.
+
+Some ino files are reqired lovyanGFX and lovyanlancher.
+M5Stack-SD-Updater version must be 0.5.3 (1.x or higher will not work)
