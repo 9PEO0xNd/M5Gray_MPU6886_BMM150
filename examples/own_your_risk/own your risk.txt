@@ -1,4 +1,4 @@
-MahonyAHRSupdate function has problems for normalization in acc, mag, q0-q3
+MahonyAHRSupdate function has problems normalization part in acc, mag, q0-q3
 copy(overwrite) MahonyAHRS.cpp and MahonyAHRS.h files are own your risk.
 
 wrong
