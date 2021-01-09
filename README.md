@@ -14,6 +14,6 @@ copy BMM150 folder into your arduino libraries folder.
 
 Some ino files are reqired lovyanGFX and lovyanlancher.
 
-M5Stack-SD-Updater version must be 0.5.3 (1.x or higher will not work)
+M5Stack-SD-Updater version must be 0.5.2 (1.x or higher will not work)
 
 Have fun !
