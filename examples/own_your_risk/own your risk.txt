@@ -1,0 +1,13 @@
+MahonyAHRSupdate function has problems for normalization in acc, mag, q0-q3
+
+wrong
+recipNorm = Sqrt
+  ?? *= recipNorm;
+
+correct(same as MahonyAHRSupdateIMU)
+recipNorm = invSqrt
+  ?? *= recipNorm;
+
+correct (not recommended)
+recipNorm = Sqrt
+  ?? /= recipNorm;
