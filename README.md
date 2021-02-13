@@ -2,18 +2,24 @@
 
 This is M5Stack Gray MPU6886+BMM150 examples for arduino IDE.
 
-BMM150class.cpp and BMM150class.h were forked from omegatao's repository and added soft iron correction.
-
-Original link (platform IO based)
-
+BMM150class.cpp and BMM150class.h were forked from omegatao's repository. Original link (platform IO based)
 https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
 
-# Usage
+## What's New ?
+- Added soft iron distortion correction.
+- Added gyro offset calibration. However, built in M5.IMU.setGyroOffset(Ωx0,Ωy0,Ωz0) is not used.
+  It starts automatically. (still has gyro drift. but reduced a little)
+- yaw tweaked 90 degrees (button A,B,C are front side)
 
-copy BMM150 folder into your arduino libraries folder.
+## Usages
+- Copy BMM150 folder into your arduino libraries folder.
+- Some .ino files are required lovyanGFX and lovyanlancher.
+- M5Stack-SD-Updater version must be 0.5.2 (1.x or higher will not work in my code)
+- tilt_compass.ino is traditional tilt-compensated compass. Not using 9-AXIS quaternion filter.
+- Do not move or tilt your M5Stack during the gyro offset calibration.
 
-Some ino files are reqired lovyanGFX and lovyanlancher.
-
-M5Stack-SD-Updater version must be 0.5.2 (1.x or higher will not work)
+## Revision history
+2021-Jan Initial release.
+2021-Feb updated Readme.md, added built in sensor's orientation images.
 
 Have fun !
