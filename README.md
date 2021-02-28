@@ -20,6 +20,7 @@ https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
 - M5Stack-SD-Updater version must be 0.5.2 (1.x or higher will not work in my code. I don't know why)
 - tilt_compass.ino is traditional tilt-compensated compass. Not using 9-AXIS quaternion filter.
 - Do not move or tilt your M5Stack during the gyro offset calibration.
+- Do not use this unit in situations involving safety to life.
 
 ## Revision history
 - 2021-Jan Initial release.
