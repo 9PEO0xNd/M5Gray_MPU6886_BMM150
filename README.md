@@ -17,7 +17,7 @@ https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
 ## Usages
 - Copy BMM150 folder into your arduino libraries folder.
 - Some .ino files are required lovyanGFX and lovyanlancher.
-- M5Stack-SD-Updater version must be 0.5.2 (1.x or higher will not work in my code. I don't know why)
+- M5Stack-SD-Updater ~~version must be 0.5.2 (1.x or higher will not work in my code. I don't know why)~~ 1.0.x is OK now. Verified arduino 1.8.15
 - tilt_compass.ino is traditional tilt-compensated compass. Not using 9-AXIS quaternion filter.
 - Do not move or tilt your M5Stack during the gyro offset calibration.
 - Do not use this unit in situations involving safety to life.
