@@ -21,6 +21,7 @@ https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
 - tilt_compass.ino is traditional tilt-compensated compass. Not using 9-AXIS quaternion filter.
 - Do not move or tilt your M5Stack during the gyro offset calibration.
 - Do not use this unit in situations involving safety to life.
+- Not supported M5Unified library. (Consider M5Stack.h library depandency such as I2C, etc.)
 
 ## Revision history
 - 2021-Jan Initial release.
