@@ -1,18 +1,15 @@
-#define M5STACK_MPU6886
-#include <Arduino.h>
-#include <M5Stack.h>
-#include <M5StackUpdater.h> // version 0.5.2
+//#include <SD.h> // SD-Updaterを使うとき
+#include <M5Unified.h>
+//#include <M5StackUpdater.h> // SD-Updaterを使うとき
 #include <BMM150class.h>
-#include <utility/quaternionFilters.h>
-// M5Stack.hより後ろにLovyanGFXを書く
-#include <LovyanGFX.hpp>
+#include "src/quaternionFilters.h"
 
 #define MAHONY
 //#define MADGWICK
 
-static LGFX lcd;
-static LGFX_Sprite compass(&lcd);     // オフスクリーン描画用バッファ
-static LGFX_Sprite base(&compass);    // オフスクリーン描画用バッファ
+static M5GFX lcd;
+static M5Canvas compass(&lcd);     // オフスクリーン描画用バッファ
+static M5Canvas base(&compass);    // オフスクリーン描画用バッファ
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -30,10 +27,6 @@ float init_gyroZ = 0.0F;
 float magnetX = 0.0F;
 float magnetY = 0.0F;
 float magnetZ = 0.0F;
-
-float magnetaX = 0.0F;
-float magnetaY = 0.0F;
-float magnetaZ = 0.0F;
 
 //for hard iron correction
 float magoffsetX = 0.0F;
@@ -54,7 +47,8 @@ BMM150class bmm150;
 uint32_t Now = 0;
 uint32_t lastUpdate = 0;
 float deltat = 0.0f;
-float p_head_dir=0, p_yaw=0, p_deltat;
+static uint32_t fsec, psec;
+static size_t fps = 0, frame_count = 0;
 
 void initGyro() {
   lcd.clear();        // 黒で塗り潰し
@@ -62,7 +56,7 @@ void initGyro() {
   lcd.print("begin gyro calibration");
 
   for (int i = 0;i < AVERAGENUM_INIT;i++) {
-    M5.IMU.getGyroData(&gyroX,&gyroY,&gyroZ);
+    M5.Imu.getGyro(&gyroX,&gyroY,&gyroZ);
     init_gyroX += gyroX;
     init_gyroY += gyroY;
     init_gyroZ += gyroZ;
@@ -76,24 +70,30 @@ void initGyro() {
 void setup()
 {
   // put your setup code here, to run once:
-  M5.begin();
-  if(digitalRead(BUTTON_A_PIN) == 0) { 
-    Serial.println("Will Load menu binary"); 
-    updateFromFS(SD); 
-    ESP.restart(); 
-  } 
-  M5.Power.begin();
-  M5.IMU.Init();
+  auto cfg = M5.config();
+  cfg.internal_imu = true;
+
+  M5.begin(cfg);
+  //checkSDUpdater(SD); // SD-Updaterを使うとき
   
   lcd.init();
 // 回転方向を 0～3 の4方向から設定します。(4～7を使用すると上下反転になります。)
   lcd.setRotation(1);
-  
-  initGyro();
-  bmm150.Init();
 
+  if (bmm150.Init() != BMM150_OK)
+  {
+    M5.Lcd.setCursor(0, 10);
+    M5.Lcd.print("BMM150 init failed");
+    for (;;)
+    {
+        delay(100);
+    }
+  }
+
+  initGyro();
   bmm150.getMagnetOffset(&magoffsetX, &magoffsetY, &magoffsetZ);
   bmm150.getMagnetScale(&magscaleX, &magscaleY, &magscaleZ);
+  bmm150.getMagnetData(&magnetX, &magnetY, &magnetZ);
 
 // 必要に応じてカラーモードを設定します。（初期値は16）
 // 16の方がSPI通信量が少なく高速に動作しますが、赤と青の諧調が5bitになります。
@@ -136,8 +136,7 @@ void setup()
   base.drawLine( 54,  4, 60,  0, TFT_WHITE); //head
   
 // 作成したスプライトはpushSpriteで任意の座標に出力できます。
-//  base.pushSprite(100,60); // (x,y)=((320-120)/2,(240-120)/2) lcdに対して
-  
+
 }
 
 void compassplot(float a) {
@@ -146,6 +145,7 @@ void compassplot(float a) {
   compass.setTextDatum(middle_center);
   compass.setFont(&fonts::Font2);
   compass.fillScreen(0); // fill black
+
   for (ang=0 ; ang<36 ; ang++) {
     compass.drawLine(90+80*sin((a+ang*10)/180.0*PI),90-80*cos((a+ang*10)/180.0*PI),
   90+90*sin((a+ang*10)/180.0*PI), 90-90*cos((a+ang*10)/180.0*PI), TFT_WHITE); //0
@@ -171,19 +171,20 @@ void compassplot(float a) {
 // 作成したスプライトはpushSpriteで任意の座標に出力できます。
   base.pushSprite(30,30,0); // (x,y)=((180-120)/2,(180-120)/2)  compassに出力する。透過色あり
   compass.pushSprite(70,30); // (x,y)=((320-180)/2,(240-180)/2) lcdに出力する。透過色なし
+
 }
 
 void loop()
 {
   // put your main code here, to run repeatedly:
   M5.update();
-  M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
-  gyroX -= init_gyroX;
-  gyroY -= init_gyroY;
-  gyroZ -= init_gyroZ;
-  M5.IMU.getAccelData(&accX, &accY, &accZ);
-  bmm150.getMagnetData(&magnetX, &magnetY, &magnetZ);
+  M5.Imu.getGyro(&gyroX, &gyroY, &gyroZ);
+  gyroX = gyroX - init_gyroX;
+  gyroY = gyroY - init_gyroY;
+  gyroZ = gyroZ - init_gyroZ;
+  M5.Imu.getAccel(&accX, &accY, &accZ);
   
+  bmm150.getMagnetData(&magnetX, &magnetY, &magnetZ);
   magnetX = (magnetX - magoffsetX) * magscaleX;
   magnetY = (magnetY - magoffsetY) * magscaleY;
   magnetZ = (magnetZ - magoffsetZ) * magscaleZ;
@@ -210,7 +211,6 @@ void loop()
   MahonyQuaternionUpdate(accX, accY, accZ, gyroX * DEG_TO_RAD,
                            gyroY * DEG_TO_RAD, gyroZ * DEG_TO_RAD,
                            -magnetX, magnetY, -magnetZ, deltat);
-  //delay(10); // adjust sampleFreq = 50Hz
 #endif
 
   yaw = atan2(2.0f * (*(getQ() + 1) * *(getQ() + 2) + *getQ() *
@@ -230,8 +230,6 @@ void loop()
   yaw *= RAD_TO_DEG;
   roll *= RAD_TO_DEG;
 
-  delay(1); 
-
 #ifdef MAG
   Serial.printf(" %5.2f,  %5.2f,  %5.2f  \r\n", magnetX, magnetY, magnetZ);
 #endif
@@ -248,22 +246,25 @@ void loop()
   lcd.fillTriangle(160, 211, 163, 220, 157, 220, TFT_WHITE);//180
   lcd.fillTriangle( 69, 120,  60, 123,  60, 117, TFT_WHITE);//270
 
-  lcd.setTextColor(TFT_BLACK, TFT_BLACK);
-  lcd.drawString(String(p_head_dir), 30, 50);
-  lcd.drawString(String(p_yaw), 30, 80);
-  lcd.drawString(String(1/p_deltat), 270, 215);
-
+  char text_string[100];
   lcd.setTextColor(TFT_WHITE, TFT_BLACK);
   lcd.drawString("MAG X-Y", 20, 35);
-  lcd.drawString(String(head_dir), 30, 50);
+  sprintf(text_string, "%.1f   ", head_dir);
+  lcd.drawString(text_string, 30, 50);
   lcd.drawString("Heading", 20, 65);
-  lcd.drawString(String(yaw), 30, 80);
-  lcd.drawString("sampleFreq", 250, 200);
-  lcd.drawString(String(1/deltat), 270, 215);
+  sprintf(text_string, "%.1f   ", yaw);
+  lcd.drawString(text_string, 30, 80);
+  sprintf(text_string, "fps:%d   ", fps);
+  lcd.drawString(text_string, 270, 215);
 
-  p_head_dir = head_dir;
-  p_yaw = yaw;
-  p_deltat = deltat;
+  ++frame_count;
+  uint32_t fsec = m5gfx::millis() / 1000;
+  if (psec != fsec)
+  {
+    psec = fsec;
+    fps = frame_count;
+    frame_count = 0;
+  }
 
   lcd.setCursor(40, 230);
   lcd.printf("BTN_A:CAL ");

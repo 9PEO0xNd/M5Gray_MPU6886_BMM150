@@ -10,23 +10,27 @@
 // 02/10/2011	SOH Madgwick	Optimised for reduced CPU load
 //
 //=====================================================================================================
-#ifndef MahonyAHRS_h
-#define MahonyAHRS_h
+#ifndef myMahonyAHRS_h
+#define myMahonyAHRS_h
 
 //----------------------------------------------------------------------------------------------------
 // Variable declaration
 
-extern volatile float twoKp;			// 2 * proportional gain (Kp)
-extern volatile float twoKi;			// 2 * integral gain (Ki)
-extern volatile float q0, q1, q2, q3;	// quaternion of sensor frame relative to auxiliary frame
+//volatile float twoKp;			// 2 * proportional gain (Kp)
+//volatile float twoKi;			// 2 * integral gain (Ki)
+//volatile float q0, q1, q2, q3;	// quaternion of sensor frame relative to auxiliary frame
+extern volatile float myKp;
+extern volatile float myKi;
+extern volatile float q[4];
 
+namespace myIMU {
 //---------------------------------------------------------------------------------------------------
 // Function declarations
-
-void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz);
+void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float deltaT=0.04);
 //void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az);
-void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az,float *pitch,float *roll,float *yaw);
+void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az,float *pitch,float *roll,float *yaw, float deltaT=0.04);
 float invSqrt(float x);
+}
 #endif
 //=====================================================================================================
 // End of file

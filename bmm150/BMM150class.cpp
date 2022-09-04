@@ -6,26 +6,28 @@ BMM150class::BMM150class()
 
 int8_t i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t len)
 {
-    if (M5.I2C.readBytes(dev_id, reg_addr, len, read_data))
-    {
-        return BMM150_OK;
+  uint8_t index = 0;
+  Wire.beginTransmission(dev_id);
+  Wire.write(reg_addr);
+  Wire.endTransmission();
+  if(Wire.requestFrom(dev_id, (uint8_t)len)) {
+    for(uint8_t i = 0;i < len;i++) {
+      read_data[index++] = Wire.read();  // Put read results in the Rx buffer
     }
-    else
-    {
-        return BMM150_E_DEV_NOT_FOUND;
-    }
+    return BMM150_OK;
+  }
+  return BMM150_E_DEV_NOT_FOUND;
 }
 
 int8_t i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t len)
 {
-    if (M5.I2C.writeBytes(dev_id, reg_addr, read_data, len))
-    {
-        return BMM150_OK;
-    }
-    else
-    {
-        return BMM150_E_DEV_NOT_FOUND;
-    }
+  Wire.beginTransmission(dev_id);
+  Wire.write(reg_addr);
+  Wire.write(read_data, len);  // Put data in Tx buffer
+  if(Wire.endTransmission()==0) {
+    return BMM150_OK;
+  }
+  return BMM150_E_DEV_NOT_FOUND;
 }
 
 int8_t BMM150class::bmm150_initialization()
@@ -81,31 +83,8 @@ void BMM150class::bmm150_offset_load()
         Serial.printf("bmm150 load offset failed.... \r\n");
     }
 }
-/*
-void BMM150class::setup()
-{
-    M5.begin(true, false, true, false);
-    Wire.begin(21, 22, 400000);
 
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextColor(WHITE);
 
-    if (bmm150_initialization() != BMM150_OK)
-    {
-        // img.fillSprite(0);
-        // img.drawCentreString("BMM150 init failed", 160, 110, 4);
-        // img.pushSprite(0, 0);
-        M5.Lcd.setCursor(0, 10);
-        M5.Lcd.print("BMM150 init failed");
-        for (;;)
-        {
-            delay(100);
-        }
-    }
-
-    bmm150_offset_load();
-}
-*/
 void BMM150class::bmm150_calibrate(uint32_t calibrate_time)
 {
     uint32_t calibrate_timeout = 0;
@@ -152,38 +131,27 @@ void BMM150class::bmm150_calibrate(uint32_t calibrate_time)
     bmm150_offset_save();
 
     Serial.printf("\n calibrate finish ... \r\n");
-//    Serial.printf("mag_max.x: %.2f x_min: %.2f \t", mag_max.x, mag_min.x);
-//    Serial.printf("y_max: %.2f y_min: %.2f \t", mag_max.y, mag_min.y);
-//    Serial.printf("z_max: %.2f z_min: %.2f \r\n", mag_max.z, mag_min.z);
+
 }
 
-void BMM150class::Init(void)
+int8_t BMM150class::Init(void)
 {
-    Wire.begin(21, 22, 400000);
-    
-    M5.Lcd.fillScreen(BLACK);
-    M5.Lcd.setTextColor(WHITE);
+    Wire.begin(21, 22, 400000UL);
+    delay(10);
+
 
     if (bmm150_initialization() != BMM150_OK)
     {
-        M5.Lcd.setCursor(0, 10);
-        M5.Lcd.print("BMM150 init failed");
-        for (;;)
-        {
-            delay(100);
-        }
-    }
+
+
+        return BMM150_E_DEV_NOT_FOUND;
+    } else {
     
-    bmm150_offset_load();
+        bmm150_offset_load();
 
-    Serial.printf("MID X : %.2f \t MID Y : %.2f \t MID Z : %.2f \n", mag_offset.x, mag_offset.y, mag_offset.z);
-    Serial.printf("SCALE X : %.2f \t SCALE Y : %.2f \t SCALE Z : %.2f \n", mag_scale.x, mag_scale.y, mag_scale.z);
-    M5.Lcd.setCursor(0, 10);
-    M5.Lcd.printf("offset X, Y, Z: %5.4f %5.4f %5.4f \n", mag_offset.x, mag_offset.y, mag_offset.z);
-    M5.Lcd.setCursor(0, 20);
-    M5.Lcd.printf("scale  X, Y, Z: %5.4f %5.4f %5.4f \n", mag_scale.x, mag_scale.y, mag_scale.z);
 
-    delay(3000); // see preset data 3 sec.
+        return BMM150_OK;
+    }
 }
 
 void BMM150class::getMagnetData(float *mx, float *my, float *mz)
