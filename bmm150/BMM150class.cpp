@@ -9,7 +9,7 @@ int8_t i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t l
   uint8_t index = 0;
   Wire.beginTransmission(dev_id);
   Wire.write(reg_addr);
-  Wire.endTransmission();
+  Wire.endTransmission(false); // falseじゃないとタイミングによってはごきげん斜めかも？
   if(Wire.requestFrom(dev_id, (uint8_t)len)) {
     for(uint8_t i = 0;i < len;i++) {
       read_data[index++] = Wire.read();  // Put read results in the Rx buffer
