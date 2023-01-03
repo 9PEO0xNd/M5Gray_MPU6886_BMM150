@@ -7,7 +7,8 @@
 #define MAHONY
 //#define MADGWICK
 
-static M5GFX lcd;
+//static M5GFX lcd;
+auto &lcd = M5.Display; // for unified
 static M5Canvas compass(&lcd);     // オフスクリーン描画用バッファ
 static M5Canvas base(&compass);    // オフスクリーン描画用バッファ
 
@@ -76,7 +77,7 @@ void setup()
   M5.begin(cfg);
   //checkSDUpdater(SD); // SD-Updaterを使うとき
   
-  lcd.init();
+//  lcd.init();
 // 回転方向を 0～3 の4方向から設定します。(4～7を使用すると上下反転になります。)
   lcd.setRotation(1);
 

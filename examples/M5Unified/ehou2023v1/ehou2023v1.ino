@@ -192,7 +192,8 @@ void compassplot(float a) {
       compass.drawNumber(ang, 90+72*sin((a+ang*10)*DEG_TO_RAD), 90-72*cos((a+ang*10)*DEG_TO_RAD));
     }
   }
-  compass.pushImage(68+80*sin((a+335)*DEG_TO_RAD), 64-80*cos((a+335)*DEG_TO_RAD), 48, 48, ehou, 0);
+  //compass.pushImage(68+80*sin((a+335)*DEG_TO_RAD), 64-80*cos((a+335)*DEG_TO_RAD), 48, 48, ehou, 0); //西暦末尾 2,7
+  compass.pushImage(68+80*sin((a+155)*DEG_TO_RAD), 64-80*cos((a+155)*DEG_TO_RAD), 48, 48, ehou, 0); //西暦末尾 1,3,6,8
 
   compass.fillTriangle(224-70,  56-30, 228-70,  47-30, 233-70,  52-30, TFT_WHITE);// 45
   compass.fillTriangle(224-70, 184-30, 233-70, 188-30, 228-70, 193-30, TFT_WHITE);//135
