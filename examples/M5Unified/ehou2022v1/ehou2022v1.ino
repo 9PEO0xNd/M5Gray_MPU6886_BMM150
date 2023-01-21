@@ -8,7 +8,7 @@
 #include <M5Unified.h>
 //#include <M5StackUpdater.h>
 #include <BMM150class.h>
-#include "myMahonyAHRS.h"
+#include "utility/myMahonyAHRS.h"
 #include "ehou_roll.h"
 
 //  #define LGFX_AUTODETECT // 自動認識 (D-duino-32 XS, PyBadge はパネルID読取りが出来ないため自動認識の対象から外れています)
