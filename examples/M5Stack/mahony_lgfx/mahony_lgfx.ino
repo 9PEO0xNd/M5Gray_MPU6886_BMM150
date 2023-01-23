@@ -4,6 +4,10 @@
 //#include <M5StackUpdater.h> // SD-Updaterを使うとき
 #include <BMM150class.h>
 #include <utility/quaternionFilters.h>
+
+  #define LGFX_AUTODETECT // 自動認識 (D-duino-32 XS, PyBadge はパネルID読取りが出来ないため自動認識の対象から外れています)
+  #include <LGFX_AUTODETECT.hpp>  // クラス"LGFX"を準備します
+
 // M5Stack.hより後ろにLovyanGFXを書く
 #include <LovyanGFX.hpp>
 
