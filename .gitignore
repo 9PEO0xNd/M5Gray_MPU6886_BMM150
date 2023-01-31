@@ -1,0 +1,4 @@
+
+*.svd
+examples/M5Unified/ehou2023v1/debug.cfg
+examples/M5Unified/ehou2023v1/debug_custom.json

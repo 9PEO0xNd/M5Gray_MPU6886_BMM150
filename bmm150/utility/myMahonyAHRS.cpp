@@ -14,23 +14,23 @@
 //---------------------------------------------------------------------------------------------------
 // Header files
 
-#include "MahonyAHRS.h"
-#include "Arduino.h"
+#include "myMahonyAHRS.h"
+#include <Arduino.h>
 #include <math.h>
 //---------------------------------------------------------------------------------------------------
 // Definitions
 
-#define sampleFreq	25.0f			// sample frequency in Hz
+//#define sampleFreq	25.0f			// sample frequency in Hz
 #define twoKpDef	(2.0f * 1.0f)	// 2 * proportional gain
 #define twoKiDef	(2.0f * 0.0f)	// 2 * integral gain
 
 //#define twoKiDef	(0.0f * 0.0f)
-
+volatile float q[4]={1.0f, 0.0f, 0.0f, 0.0f};
+volatile float myKp = twoKpDef;                      // 2 * proportional gain (Kp)
+volatile float myKi = twoKiDef;                     // 2 * integral gain (Ki)
+namespace myIMU {
 //---------------------------------------------------------------------------------------------------
 // Variable definitions
-
-volatile float twoKp = twoKpDef;											// 2 * proportional gain (Kp)
-volatile float twoKi = twoKiDef;											// 2 * integral gain (Ki)
 volatile float q0 = 1.0, q1 = 0.0, q2 = 0.0, q3 = 0.0;					// quaternion of sensor frame relative to auxiliary frame
 volatile float integralFBx = 0.0f,  integralFBy = 0.0f, integralFBz = 0.0f;	// integral error terms scaled by Ki
 
@@ -45,9 +45,9 @@ volatile float integralFBx = 0.0f,  integralFBy = 0.0f, integralFBz = 0.0f;	// i
 //---------------------------------------------------------------------------------------------------
 // AHRS algorithm update
 
-void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz) {
+void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float deltaT) {
 	float recipNorm;
-    float q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;
+  float q0q0, q0q1, q0q2, q0q3, q1q1, q1q2, q1q3, q2q2, q2q3, q3q3;
 	float hx, hy, bx, bz;
 	float halfvx, halfvy, halfvz, halfwx, halfwy, halfwz;
 	float halfex, halfey, halfez;
@@ -63,7 +63,7 @@ void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az
 	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
 
 		// Normalise accelerometer measurement
-		recipNorm = invSqrt(ax * ax + ay * ay + az * az);
+    recipNorm = invSqrt(ax * ax + ay * ay + az * az);
 		ax *= recipNorm;
 		ay *= recipNorm;
 		az *= recipNorm;
@@ -106,10 +106,10 @@ void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az
 		halfez = (ax * halfvy - ay * halfvx) + (mx * halfwy - my * halfwx);
 
 		// Compute and apply integral feedback if enabled
-		if(twoKi > 0.0f) {
-			integralFBx += twoKi * halfex * (1.0f / sampleFreq);	// integral error scaled by Ki
-			integralFBy += twoKi * halfey * (1.0f / sampleFreq);
-			integralFBz += twoKi * halfez * (1.0f / sampleFreq);
+		if(myKi > 0.0f) {
+			integralFBx += myKi * halfex * deltaT;	// integral error scaled by Ki
+			integralFBy += myKi * halfey * deltaT;
+			integralFBz += myKi * halfez * deltaT;
 			gx += integralFBx;	// apply integral feedback
 			gy += integralFBy;
 			gz += integralFBz;
@@ -121,15 +121,15 @@ void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az
 		}
 
 		// Apply proportional feedback
-		gx += twoKp * halfex;
-		gy += twoKp * halfey;
-		gz += twoKp * halfez;
+		gx += myKp * halfex;
+		gy += myKp * halfey;
+		gz += myKp * halfez;
 	}
 
 	// Integrate rate of change of quaternion
-	gx *= (0.5f * (1.0f / sampleFreq));		// pre-multiply common factors
-	gy *= (0.5f * (1.0f / sampleFreq));
-	gz *= (0.5f * (1.0f / sampleFreq));
+	gx *= (0.5f * deltaT);		// pre-multiply common factors
+	gy *= (0.5f * deltaT);
+	gz *= (0.5f * deltaT);
 	qa = q0;
 	qb = q1;
 	qc = q2;
@@ -144,12 +144,19 @@ void MahonyAHRSupdate(float gx, float gy, float gz, float ax, float ay, float az
 	q1 *= recipNorm;
 	q2 *= recipNorm;
 	q3 *= recipNorm;
+
+    q[0]=q0;
+    q[1]=q1;
+    q[2]=q2;
+    q[3]=q3;
+
+//    Serial.println(deltaT);
 }
 
 //---------------------------------------------------------------------------------------------------
 // IMU algorithm update
 
-void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az,float *pitch,float *roll,float *yaw) {
+void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float az,float *pitch,float *roll,float *yaw, float deltaT) {
 	float recipNorm;
 	float halfvx, halfvy, halfvz;
 	float halfex, halfey, halfez;
@@ -178,10 +185,10 @@ void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float
 		halfez = (ax * halfvy - ay * halfvx);
 
 		// Compute and apply integral feedback if enabled
-		if(twoKi > 0.0f) {
-			integralFBx += twoKi * halfex * (1.0f / sampleFreq);	// integral error scaled by Ki
-			integralFBy += twoKi * halfey * (1.0f / sampleFreq);
-			integralFBz += twoKi * halfez * (1.0f / sampleFreq);
+		if(myKi > 0.0f) {
+			integralFBx += myKi * halfex * deltaT;	// integral error scaled by Ki
+			integralFBy += myKi * halfey * deltaT;
+			integralFBz += myKi * halfez * deltaT;
 			gx += integralFBx;	// apply integral feedback
 			gy += integralFBy;
 			gz += integralFBz;
@@ -193,15 +200,15 @@ void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float
 		}
 
 		// Apply proportional feedback
-		gx += twoKp * halfex;
-		gy += twoKp * halfey;
-		gz += twoKp * halfez;
+		gx += myKp * halfex;
+		gy += myKp * halfey;
+		gz += myKp * halfez;
 	}
 
 	// Integrate rate of change of quaternion
-	gx *= (0.5f * (1.0f / sampleFreq));		// pre-multiply common factors
-	gy *= (0.5f * (1.0f / sampleFreq));
-	gz *= (0.5f * (1.0f / sampleFreq));
+	gx *= (0.5f * deltaT);		// pre-multiply common factors
+	gy *= (0.5f * deltaT);
+	gz *= (0.5f * deltaT);
 	qa = q0;
 	qb = q1;
 	qc = q2;
@@ -227,18 +234,19 @@ void MahonyAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, float
     // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
     // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
     // - http://www.ngdc.noaa.gov/geomag-web/#declination
-    *yaw   -= 8.5;
+//    *yaw   -= 8.5;
     *roll  *= RAD_TO_DEG;
 
-	///Serial.printf("%f    %f    %f \r\n",  pitch, roll, yaw);
+//    Serial.printf("%f    %f    %f    %f \r\n",  *pitch, *roll, *yaw, deltaT);
+
 }
 
 //---------------------------------------------------------------------------------------------------
 // Fast inverse square-root
 // See: http://en.wikipedia.org/wiki/Fast_inverse_square_root
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wstrict-aliasing"
 float invSqrt(float x) {
 	float halfx = 0.5f * x;
 	float y = x;
@@ -248,7 +256,8 @@ float invSqrt(float x) {
 	y = y * (1.5f - (halfx * y * y));
 	return y;
 }
-#pragma GCC diagnostic pop
+//#pragma GCC diagnostic pop
+}
 //====================================================================================================
 // END OF CODE
 //====================================================================================================

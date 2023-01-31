@@ -1,18 +1,34 @@
-#define M5STACK_MPU6886
-#include <Arduino.h>
-#include <M5Stack.h>
-#include <M5StackUpdater.h> // version 0.5.2
+//Ehou of 2022 is NNW
+//#define M5STACK_MPU6886
+// 恵方巻「いらすとや」
+// データ変換は https://lang-ship.com/ さんのツールを使わせていただきました
+
+//#include <SD.h>
+
+#include <M5Unified.h>
+//#include <M5StackUpdater.h>
 #include <BMM150class.h>
-#include <utility/quaternionFilters.h>
+#include "utility/myMahonyAHRS.h"
+#include "ehou_roll.h"
+
+//  #define LGFX_AUTODETECT // 自動認識 (D-duino-32 XS, PyBadge はパネルID読取りが出来ないため自動認識の対象から外れています)
+//  #include <LGFX_AUTODETECT.hpp>  // クラス"LGFX"を準備します
+
+// 複数機種の定義を行うか、LGFX_AUTODETECTを定義することで、実行時にボードを自動認識します。
+
+// v1.0.0 を有効にします(v0からの移行期間の特別措置です。これを書かない場合は旧v0系で動作します。)
+//#define LGFX_USE_V1
+
 // M5Stack.hより後ろにLovyanGFXを書く
-#include <LovyanGFX.hpp>
+//#include <LovyanGFX.hpp>
 
-#define MAHONY
-//#define MADGWICK
-
-static LGFX lcd;
-static LGFX_Sprite compass(&lcd);     // オフスクリーン描画用バッファ
-static LGFX_Sprite base(&compass);    // オフスクリーン描画用バッファ
+//static LGFX lcd;
+//static LGFX_Sprite compass(&lcd);     // オフスクリーン描画用バッファ
+//static LGFX_Sprite base(&compass);    // オフスクリーン描画用バッファ
+//static M5GFX lcd;
+auto &lcd = M5.Display; // for unified
+static M5Canvas compass(&lcd);     // オフスクリーン描画用バッファ
+static M5Canvas base(&compass);    // オフスクリーン描画用バッファ
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -31,16 +47,12 @@ float magnetX = 0.0F;
 float magnetY = 0.0F;
 float magnetZ = 0.0F;
 
-float magnetaX = 0.0F;
-float magnetaY = 0.0F;
-float magnetaZ = 0.0F;
-
-//for hard iron correction
+//hard 
 float magoffsetX = 0.0F;
 float magoffsetY = 0.0F;
 float magoffsetZ = 0.0F;
 
-//for soft iron correction
+//soft
 float magscaleX = 0.0F;
 float magscaleY = 0.0F;
 float magscaleZ = 0.0F;
@@ -54,7 +66,8 @@ BMM150class bmm150;
 uint32_t Now = 0;
 uint32_t lastUpdate = 0;
 float deltat = 0.0f;
-float p_head_dir=0, p_yaw=0, p_deltat;
+static uint32_t fsec, psec;
+static size_t fps = 0, frame_count = 0;
 
 void initGyro() {
   lcd.clear();        // 黒で塗り潰し
@@ -62,7 +75,7 @@ void initGyro() {
   lcd.print("begin gyro calibration");
 
   for (int i = 0;i < AVERAGENUM_INIT;i++) {
-    M5.IMU.getGyroData(&gyroX,&gyroY,&gyroZ);
+    M5.Imu.getGyro(&gyroX,&gyroY,&gyroZ);
     init_gyroX += gyroX;
     init_gyroY += gyroY;
     init_gyroZ += gyroZ;
@@ -76,24 +89,38 @@ void initGyro() {
 void setup()
 {
   // put your setup code here, to run once:
-  M5.begin();
-  if(digitalRead(BUTTON_A_PIN) == 0) { 
-    Serial.println("Will Load menu binary"); 
-    updateFromFS(SD); 
-    ESP.restart(); 
-  } 
-  M5.Power.begin();
-  M5.IMU.Init();
-  
-  lcd.init();
+  auto cfg = M5.config();
+  cfg.internal_imu = true;
+
+  M5.begin(cfg);
+//  checkSDUpdater(SD);
+
+//  lcd.init();
 // 回転方向を 0～3 の4方向から設定します。(4～7を使用すると上下反転になります。)
   lcd.setRotation(1);
-  
-  initGyro();
-  bmm150.Init();
 
+  if (bmm150.Init() != BMM150_OK)
+  {
+    M5.Lcd.setCursor(0, 10);
+    M5.Lcd.print("BMM150 init failed");
+    for (;;)
+    {
+        delay(100);
+    }
+  }
+
+  initGyro();
   bmm150.getMagnetOffset(&magoffsetX, &magoffsetY, &magoffsetZ);
   bmm150.getMagnetScale(&magscaleX, &magscaleY, &magscaleZ);
+  bmm150.getMagnetData(&magnetX, &magnetY, &magnetZ);
+/*
+  q[0] = 0.707; q[3]= 0.707;
+  if((magnetX>magoffsetX)&&(magnetY>magoffsetY)) 
+    q[0] = -q[0];
+  if((magnetX<magoffsetX)&&(magnetY>magoffsetY)) 
+    q[3] = -q[3];
+*/    
+  myKp=8.0f; myKi=0.0f;
 
 // 必要に応じてカラーモードを設定します。（初期値は16）
 // 16の方がSPI通信量が少なく高速に動作しますが、赤と青の諧調が5bitになります。
@@ -136,8 +163,7 @@ void setup()
   base.drawLine( 54,  4, 60,  0, TFT_WHITE); //head
   
 // 作成したスプライトはpushSpriteで任意の座標に出力できます。
-//  base.pushSprite(100,60); // (x,y)=((320-120)/2,(240-120)/2) lcdに対して
-  
+//  base.pushSprite(30,30,0); // (x,y)=((180-120)/2,(180-120)/2)  compassに出力する。透過色あり
 }
 
 void compassplot(float a) {
@@ -146,23 +172,29 @@ void compassplot(float a) {
   compass.setTextDatum(middle_center);
   compass.setFont(&fonts::Font2);
   compass.fillScreen(0); // fill black
+
   for (ang=0 ; ang<36 ; ang++) {
-    compass.drawLine(90+80*sin((a+ang*10)/180.0*PI),90-80*cos((a+ang*10)/180.0*PI),
-  90+90*sin((a+ang*10)/180.0*PI), 90-90*cos((a+ang*10)/180.0*PI), TFT_WHITE); //0
-    compass.setTextSize(1.5);
+    compass.drawLine(90+80*sin((a+ang*10)*DEG_TO_RAD),90-80*cos((a+ang*10)*DEG_TO_RAD),
+  90+90*sin((a+ang*10)*DEG_TO_RAD), 90-90*cos((a+ang*10)*DEG_TO_RAD), TFT_WHITE); //0
+    compass.setTextSize(0.72);
+    compass.setFont(&fonts::Font4);
     if (ang==0) {
-      compass.drawString("N", 90+72*sin((a+  0)/180.0*PI), 90-72*cos((a+  0)/180.0*PI)); //0
+      compass.drawString("N", 90+72*sin((a+  0)*DEG_TO_RAD), 90-72*cos((a+  0)*DEG_TO_RAD)); //0
     } else if (ang==9) {
-      compass.drawString("E", 90+72*sin((a+ 90)/180.0*PI), 90-72*cos((a+ 90)/180.0*PI)); //90
+      compass.drawString("E", 90+72*sin((a+ 90)*DEG_TO_RAD), 90-72*cos((a+ 90)*DEG_TO_RAD)); //90
     } else if (ang==18) {
-      compass.drawString("S", 90+72*sin((a+180)/180.0*PI), 90-72*cos((a+180)/180.0*PI)); //180
+      compass.drawString("S", 90+72*sin((a+180)*DEG_TO_RAD), 90-72*cos((a+180)*DEG_TO_RAD)); //180
     } else if (ang==27) {
-      compass.drawString("W", 90+72*sin((a+270)/180.0*PI), 90-72*cos((a+270)/180.0*PI)); //270
+      compass.drawString("W", 90+72*sin((a+270)*DEG_TO_RAD), 90-72*cos((a+270)*DEG_TO_RAD)); //270
     } else if ((ang%3)==0) {
       compass.setTextSize(1);
-      compass.drawNumber(ang, 90+72*sin((a+ang*10)/180.0*PI), 90-72*cos((a+ang*10)/180.0*PI));
+      compass.setFont(&fonts::Font2);
+      compass.drawNumber(ang, 90+72*sin((a+ang*10)*DEG_TO_RAD), 90-72*cos((a+ang*10)*DEG_TO_RAD));
     }
   }
+  //compass.pushImage(68+80*sin((a+335)*DEG_TO_RAD), 64-80*cos((a+335)*DEG_TO_RAD), 48, 48, ehou, 0); //西暦末尾 2,7
+  compass.pushImage(68+80*sin((a+155)*DEG_TO_RAD), 64-80*cos((a+155)*DEG_TO_RAD), 48, 48, ehou, 0); //西暦末尾 1,3,6,8
+
   compass.fillTriangle(224-70,  56-30, 228-70,  47-30, 233-70,  52-30, TFT_WHITE);// 45
   compass.fillTriangle(224-70, 184-30, 233-70, 188-30, 228-70, 193-30, TFT_WHITE);//135
   compass.fillTriangle( 96-70, 184-30,  92-70, 193-30,  87-70, 188-30, TFT_WHITE);//225
@@ -171,19 +203,21 @@ void compassplot(float a) {
 // 作成したスプライトはpushSpriteで任意の座標に出力できます。
   base.pushSprite(30,30,0); // (x,y)=((180-120)/2,(180-120)/2)  compassに出力する。透過色あり
   compass.pushSprite(70,30); // (x,y)=((320-180)/2,(240-180)/2) lcdに出力する。透過色なし
+
 }
 
 void loop()
 {
+//  float magnetX1, magnetY1, magnetZ1;
   // put your main code here, to run repeatedly:
   M5.update();
-  M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
-  gyroX -= init_gyroX;
-  gyroY -= init_gyroY;
-  gyroZ -= init_gyroZ;
-  M5.IMU.getAccelData(&accX, &accY, &accZ);
-  bmm150.getMagnetData(&magnetX, &magnetY, &magnetZ);
+  M5.Imu.getGyro(&gyroX, &gyroY, &gyroZ);
+  gyroX = gyroX - init_gyroX;
+  gyroY = gyroY - init_gyroY;
+  gyroZ = gyroZ - init_gyroZ;
+  M5.Imu.getAccel(&accX, &accY, &accZ);
   
+  bmm150.getMagnetData(&magnetX, &magnetY, &magnetZ);
   magnetX = (magnetX - magoffsetX) * magscaleX;
   magnetY = (magnetY - magoffsetY) * magscaleY;
   magnetZ = (magnetZ - magoffsetZ) * magscaleZ;
@@ -200,37 +234,21 @@ void loop()
   deltat = ((Now - lastUpdate) / 1000000.0f);//0.09
   lastUpdate = Now;
 
-#ifdef MADGWICK
-  MadgwickQuaternionUpdate(accX, accY, accZ, gyroX * DEG_TO_RAD,
-                           gyroY * DEG_TO_RAD, gyroZ * DEG_TO_RAD,
-                           -magnetX, magnetY, -magnetZ, deltat);
-#endif
+  myIMU::MahonyAHRSupdate(gyroX * DEG_TO_RAD, gyroY * DEG_TO_RAD, gyroZ * DEG_TO_RAD,
+                   accX, accY, accZ, -magnetX, magnetY, -magnetZ, deltat);
 
-#ifdef MAHONY
-  MahonyQuaternionUpdate(accX, accY, accZ, gyroX * DEG_TO_RAD,
-                           gyroY * DEG_TO_RAD, gyroZ * DEG_TO_RAD,
-                           -magnetX, magnetY, -magnetZ, deltat);
-  //delay(10); // adjust sampleFreq = 50Hz
-#endif
-
-  yaw = atan2(2.0f * (*(getQ() + 1) * *(getQ() + 2) + *getQ() *
-                                                          *(getQ() + 3)),
-              *getQ() * *getQ() + *(getQ() + 1) * *(getQ() + 1) - *(getQ() + 2) * *(getQ() + 2) - *(getQ() + 3) * *(getQ() + 3));
-  pitch = -asin(2.0f * (*(getQ() + 1) * *(getQ() + 3) - *getQ() *
-                                                            *(getQ() + 2)));
-  roll = atan2(2.0f * (*getQ() * *(getQ() + 1) + *(getQ() + 2) *
-                                                     *(getQ() + 3)),
-               *getQ() * *getQ() - *(getQ() + 1) * *(getQ() + 1) - *(getQ() + 2) * *(getQ() + 2) + *(getQ() + 3) * *(getQ() + 3));
-  yaw = -0.5*M_PI-yaw;
+  pitch = asin(-2 * q[1] * q[3] + 2 * q[0]* q[2]); // pitch
+  roll  = atan2(2 * q[2] * q[3] + 2 * q[0] * q[1], -2 * q[1] * q[1] - 2 * q[2]* q[2] + 1); // roll
+  yaw   = atan2(2*(q[1]*q[2] + q[0]*q[3]),q[0]*q[0]+q[1]*q[1]-q[2]*q[2]-q[3]*q[3]);  //yaw
+  yaw = -0.5*PI-yaw;
   if(yaw < 0)
-    yaw += 2*M_PI;
-  if(yaw > 2*M_PI)
-    yaw -= 2*M_PI;
+    yaw += 2*PI;
+  if(yaw > 2*PI)
+    yaw -= 2*PI;
+
   pitch *= RAD_TO_DEG;
   yaw *= RAD_TO_DEG;
   roll *= RAD_TO_DEG;
-
-  delay(1); 
 
 #ifdef MAG
   Serial.printf(" %5.2f,  %5.2f,  %5.2f  \r\n", magnetX, magnetY, magnetZ);
@@ -248,22 +266,26 @@ void loop()
   lcd.fillTriangle(160, 211, 163, 220, 157, 220, TFT_WHITE);//180
   lcd.fillTriangle( 69, 120,  60, 123,  60, 117, TFT_WHITE);//270
 
-  lcd.setTextColor(TFT_BLACK, TFT_BLACK);
-  lcd.drawString(String(p_head_dir), 30, 50);
-  lcd.drawString(String(p_yaw), 30, 80);
-  lcd.drawString(String(1/p_deltat), 270, 215);
-
+  char text_string[100];
   lcd.setTextColor(TFT_WHITE, TFT_BLACK);
   lcd.drawString("MAG X-Y", 20, 35);
-  lcd.drawString(String(head_dir), 30, 50);
+  sprintf(text_string, "%.1f   ", head_dir);
+  lcd.drawString(text_string, 30, 50);
   lcd.drawString("Heading", 20, 65);
-  lcd.drawString(String(yaw), 30, 80);
-  lcd.drawString("sampleFreq", 250, 200);
-  lcd.drawString(String(1/deltat), 270, 215);
+  sprintf(text_string, "%.1f   ", yaw);
+  lcd.drawString(text_string, 30, 80);
+  sprintf(text_string, "fps:%d   ", fps);
+  lcd.drawString(text_string, 270, 215);
 
-  p_head_dir = head_dir;
-  p_yaw = yaw;
-  p_deltat = deltat;
+  ++frame_count;
+  uint32_t fsec = m5gfx::millis() / 1000;
+  if (psec != fsec)
+  {
+    psec = fsec;
+    fps = frame_count;
+    frame_count = 0;
+  }
+//  delay(15); // adjusted sampleFreq=25.0 Hz
 
   lcd.setCursor(40, 230);
   lcd.printf("BTN_A:CAL ");
