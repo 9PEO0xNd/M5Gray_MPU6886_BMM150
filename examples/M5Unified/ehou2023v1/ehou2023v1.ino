@@ -1,4 +1,4 @@
-//Ehou of 2022 is NNW
+//Ehou of 2023 is SSE
 //#define M5STACK_MPU6886
 // 恵方巻「いらすとや」
 // データ変換は https://lang-ship.com/ さんのツールを使わせていただきました
