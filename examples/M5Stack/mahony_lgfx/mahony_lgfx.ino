@@ -260,13 +260,13 @@ void loop()
   char text_string[100];
   lcd.setTextColor(TFT_WHITE, TFT_BLACK);
   lcd.drawString("MAG X-Y", 20, 35);
-  sprintf(text_string, "%.1f   ", head_dir);
+  sprintf(text_string, "%5.1f   ", head_dir);
   lcd.drawString(text_string, 30, 50);
   lcd.drawString("Heading", 20, 65);
-  sprintf(text_string, "%.1f   ", yaw);
+  sprintf(text_string, "%5.1f   ", yaw);
   lcd.drawString(text_string, 30, 80);
   lcd.drawString("sampleFreq", 250, 200);
-  sprintf(text_string, "%.1f   ", 1/deltat);
+  sprintf(text_string, "%4.1f   ", 1/deltat);
   lcd.drawString(text_string, 270, 215);
 
   lcd.setCursor(40, 230);
