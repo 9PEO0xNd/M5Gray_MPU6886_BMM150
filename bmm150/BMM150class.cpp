@@ -4,7 +4,7 @@ BMM150class::BMM150class()
 {
 }
 
-int8_t i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t len)
+int8_t BMM150class::i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t len)
 {
   uint8_t index = 0;
   Wire.beginTransmission(dev_id);
@@ -19,7 +19,7 @@ int8_t i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t l
   return BMM150_E_DEV_NOT_FOUND;
 }
 
-int8_t i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t len)
+int8_t BMM150class::i2c_write(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t len)
 {
   Wire.beginTransmission(dev_id);
   Wire.write(reg_addr);
