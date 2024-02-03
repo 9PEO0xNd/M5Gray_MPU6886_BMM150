@@ -4,6 +4,10 @@ BMM150class::BMM150class()
 {
 }
 
+BMM150class::~BMM150class()
+{
+}
+
 int8_t BMM150class::i2c_read(uint8_t dev_id, uint8_t reg_addr, uint8_t *read_data, uint16_t len)
 {
   uint8_t index = 0;

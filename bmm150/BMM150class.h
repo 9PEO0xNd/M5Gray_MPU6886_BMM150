@@ -25,6 +25,8 @@ private:
 
 public:
     BMM150class();
+    ~BMM150class();
+
     int8_t Init(void);
     void bmm150_calibrate(uint32_t calibrate_time);
     void getMagnetData(float *mx, float *my, float *mz);
