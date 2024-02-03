@@ -22,7 +22,7 @@ https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
 - Do not move or tilt your M5Stack during the gyro offset calibration.
 - Do not use this unit in situations involving safety to life.
 - ~~- Not supported M5Unified library. (Consider M5Stack.h library depandency such as I2C, etc.)~~
-- Added example code using M5Unified library.(2023年の恵方を入れました)
+- Added example code using M5Unified library.(2024年の恵方を入れました)
 
 ## References
 - https://github.com/BoschSensortec/BMM150-Sensor-API
@@ -34,5 +34,6 @@ https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
 - 2021-Jan Initial release.
 - 2021-Feb updated Readme.md, added built in sensor's orientation images.
 - 2023-Jan Modified I2C part and added example code using M5Unified library.
+- 2024-Feb デストラクタを追加
 
 Have fun !
