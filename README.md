@@ -2,10 +2,10 @@
 
 This is M5Stack Gray MPU6886+BMM150 examples for arduino IDE.
 
-<img src="images/hsi_picture.jpg" width="250">
-<img src="images/Gray_Mpu6886+bmm150_orientation.png">
+![HSI.jpg](images/hsi_picture.jpg)
+![orientation](images/Gray_Mpu6886+bmm150_orientation.png)
 
-<br>
+---
 
 `BMM150class.cpp` and `BMM150class.h` were forked from omegatao's repository. Original link (platform IO based)
 https://github.com/omegatao/M5StackGrey_MPU6886_BMM150_AHRS_sample
