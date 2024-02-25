@@ -2,7 +2,7 @@
 
 This is M5Stack Gray MPU6886+BMM150 examples for arduino IDE.
 
-![HSI.jpg](images/hsi_picture.jpg)
+![HSI.jpg](images/hsi_picture.png)
 ![orientation](images/Gray_Mpu6886+bmm150_orientation.png)
 
 ---
